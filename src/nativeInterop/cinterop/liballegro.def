@@ -1,0 +1,7 @@
+headers = allegro5/allegro.h \
+allegro5/allegro_font.h
+
+entryPoint = main
+
+linkerOpts.osx = -L/usr/local/lib -lallegro -lallegro_main -lallegro_font
+compilerOpts = -I/usr/local/include

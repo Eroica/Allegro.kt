@@ -1,0 +1,79 @@
+h1. Allegro.kt
+
+How to create and use Kotlin/Native bindings for "Allegro":https://liballeg.org/. This guide is for Allegro version 5.
+
+h2. Requirements
+
+* Compile Allegro using CMake or by using one of your platform's package managers. This guide assumes that Allegro has been installed to @/usr/local@.
+* Download Kotlin/Native for your platform from JetBrain's repository: "https://github.com/JetBrains/kotlin-native/":https://github.com/JetBrains/kotlin-native/
+
+h2. Create Bindings
+
+Execute @cinterop@ (from Kotlin/Native) on @liballegro.def@ (see below) to create the bindings. This will create a file @liballegro.klib@.
+
+@cinterop -def src/nativeInterop/cinterop/liballegro.def -pkg org.liballeg -o liballegro@
+
+h3. Sample @liballegro.def@
+
+bc.. headers = allegro5/allegro.h \
+allegro5/allegro_font.h
+
+entryPoint = main
+
+linkerOpts.osx = -L/usr/local/lib -lallegro -lallegro_main -lallegro_font
+compilerOpts = -I/usr/local/include
+
+p. On OS X, both @entryPoint@ and linking with @allegro_main@ is required due to "https://www.allegro.cc/manual/5/al_run_main":https://www.allegro.cc/manual/5/al_run_main.
+
+This @.def@ file contains enough to compile the sample application. If you use other Allegro functions, you need to adapt @headers@ and @linkerOpts@ accordingly.
+
+h2. Compile Sample Program
+
+You can now use Allegro functions in Kotlin! Note that @cinterop@ is not able to create definitions for everything, especially not for C macros. @al_init@ is a macro that wraps @al_install_system@, so in your Kotlin code you need to initialize Allegro like this:
+
+bc.. import platform.posix.*
+import org.liballeg.*
+
+fun main(args: Array<String>) {
+    al_install_system(ALLEGRO_VERSION_INT, staticCFunction(::atexit))
+    // ...
+}
+
+p. (See @src/Sample.kt@ for an example program.)
+
+To compile an Allegro application, you need to add @liballegro.klib@ as a @-library@, and link it with @allegro@ (and @allegro_main@ on OS X). The @.def@ file described above takes care of this automatically. On OS X, you need to supply @-nomain@ to the compiler as well:
+
+@kotlinc -library liballegro.klib -nomain src/Sample.kt@
+
+h3. Compile with Gradle MPP
+
+If you are using CLion and want to create the bindings automatically with all necessary compiler and linker options, make sure to:
+
+* Copy @src/nativeInterop/@ to your project's @src/@ folder.
+* Configure @build.gradle.kts@ to run @cinterop@, and link your application correctly (e.g. with @allegro_main@ and @-nomain@ flag on OS X) like this:
+
+In the @kotlin {@ block, there is a block for your target platform, e.g. @macosX64("Sample") {@. Add the appropriate linker flags to the @executable {@ block:
+
+bc.. linkerOpts = mutableListOf("-L/usr/local/lib", "-lallegro", "-lallegro_main")
+
+p. Below the @binaries { ... }@ block, add:
+
+bc.. compilations.getByName("main") {
+	val myInterop by cinterops.creating {
+		defFile(project.file("src/nativeInterop/cinterop/liballegro.def"))
+		packageName("org.liballeg")
+	}
+}
+
+p. On OS X, also add this block to the @kotlin {@ block:
+
+bc.. kotlin {
+	...
+	targets.all {
+		compilations.all {
+			kotlinOptions {
+				freeCompilerArgs += "-nomain"
+			}
+		}
+	}
+}
