@@ -65,15 +65,11 @@ bc.. compilations.getByName("main") {
 	}
 }
 
-p. On OS X, also add this block to the @kotlin {@ block:
+p. On OS X, add this to the @compilations@ block as well:
 
-bc.. kotlin {
-	...
-	targets.all {
-		compilations.all {
-			kotlinOptions {
-				freeCompilerArgs += "-nomain"
-			}
-		}
+bc.. compilations.getByName("main") {
+	kotlinOptions {
+		freeCompilerArgs += "-nomain"
 	}
+	...
 }
